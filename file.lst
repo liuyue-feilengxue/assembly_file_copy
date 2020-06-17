@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 6.11		    06/17/20 11:23:32
+Microsoft (R) Macro Assembler Version 6.11		    06/17/20 14:46:51
 tempfile.asm						     Page 1 - 1
 
 
@@ -10,9 +10,37 @@ tempfile.asm						     Page 1 - 1
        74 00
  0010 6F 70 65 6E 20 65		    opnmsg db 'open error$'
        72 72 6F 72 24
- 001B 00			    errcde db 0
- 001C 0000			    handle dw ?
- 001E				DATAS ENDS
+ 001B 6F 70 65 6E 20 66		    opnok db 'open finish',0dh,0ah,'$'
+       69 6E 69 73 68 0D
+       0A 24
+ 0029 77 72 69 74 65 20		    wrtmsg db 'write error$'
+       65 72 72 6F 72 24
+ 0035 77 72 69 74 65 20		    wrtok db 'write finish',0dh,0ah,'$'
+       66 69 6E 69 73 68
+       0D 0A 24
+ 0044 77 72 69 74 65 20		    cpymsg db 'write error$'
+       65 72 72 6F 72 24
+ 0050 63 6F 70 79 20 66		    cpyok db 'copy finish',0dh,0ah,'$'
+       69 6E 69 73 68 0D
+       0A 24
+ 005E 63 6C 6F 73 65 20		    clsok db 'close finish',0dh,0ah,'$'
+       66 69 6E 69 73 68
+       0D 0A 24
+ 006D 70 6C 65 61 73 65		    str1 db 'please input the content of abc.txt:$'
+       20 69 6E 70 75 74
+       20 74 68 65 20 63
+       6F 6E 74 65 6E 74
+       20 6F 66 20 61 62
+       63 2E 74 78 74 3A
+       24
+ 0092 00			    errcde db 0   ;错误码
+ 0093 0000			    handle dw ?   ;公用文件号
+ 0095 0000			    handle1 dw ?  ;abc文件号
+ 0097 0000			    handle2 dw ?  ;def文件号
+ 0099  0064 [			    content db 100 dup(?),'$'
+        00
+       ] 24
+ 00FE				DATAS ENDS
 
  0000				STACKS SEGMENT
 				    ;此处输入堆栈段代码
@@ -24,52 +52,160 @@ tempfile.asm						     Page 1 - 1
 
  0000  B8 ---- R		    MOV AX,DATAS
  0003  8E D8			    MOV DS,AX
-				    ;此处输入代码段代码
+				    ;新建文件abc
  0005  B8 0000			    mov ax,0
- 0008  E8 000D			    call newfile
+ 0008  8D 16 0000 R		    lea dx,pathname1
+ 000C  E8 007C			    call newfile
+ 000F  80 3E 0092 R 00		    cmp errcde,0
+ 0014  74 02			    jz contin1
+ 0016  EB 6F			    jmp exit
 				    
- 000B  80 3E 001B R 00		    cmp errcde,0
- 0010  74 02			    jz contin
- 0012  EB 00			    jmp exit
- 0014				contin:
-					
+ 0018				contin1:
+					;新建完成提示
+ 0018  BA 001B R			mov dx,offset opnok
+ 001B  B4 09				mov ah,09h
+ 001D  CD 21				int 21h
+ 001F  8B 1E 0093 R			mov bx,handle
+ 0023  89 1E 0095 R			mov handle1,bx
+ 0027  BB 0000				mov bx,0
+					;输入文件内容
+ 002A  E8 0076				call proch
+ 002D  80 3E 0092 R 00		    cmp errcde,0
+ 0032  74 02			    jz contin2
+ 0034  EB 51			    jmp exit
 				    
- 0014				exit:
- 0014  B4 4C			    MOV AH,4CH
- 0016  CD 21			    INT 21H
- 0018				main endp
+ 0036				contin2:
+					;输入完成提示
+ 0036  BA 0035 R			mov dx,offset wrtok
+ 0039  B4 09				mov ah,09h
+ 003B  CD 21				int 21h
+					;新建文件def
+ 003D  8D 16 0008 R			lea dx,pathname2
+ 0041  E8 0047			    call newfile
+ 0044  80 3E 0092 R 00		    cmp errcde,0
+ 0049  74 02			    jz contin3
+ 004B  EB 3A			    jmp exit
+ 004D				contin3:
+					;新建完成提示
+ 004D  BA 001B R			mov dx,offset opnok
+ 0050  B4 09				mov ah,09h
+ 0052  CD 21				int 21h
+ 0054  8B 1E 0093 R			mov bx,handle
+ 0058  89 1E 0097 R			mov handle2,bx
+ 005C  BB 0000				mov bx,0
+					;复制文件
+ 005F  E8 007A				call copy
+ 0062  80 3E 0092 R 00			cmp errcde,0
+ 0067  74 02			    jz contin4
+ 0069  EB 1C			    jmp exit
+ 006B				contin4:
+					;复制完成提示
+ 006B  BA 0050 R			mov dx,offset cpyok
+ 006E  B4 09				mov ah,09h
+ 0070  CD 21				int 21h
+					;关文件
+ 0072  8B 1E 0095 R			mov bx,handle1
+ 0076  E8 0085				call clseh
+ 0079  8B 1E 0097 R			mov bx,handle2
+ 007D  E8 007E				call clseh
+					;关闭文件完成提示
+ 0080  BA 005E R			mov dx,offset clsok
+ 0083  B4 09				mov ah,09h
+ 0085  CD 21				int 21h
+ 0087				exit:
+ 0087  B4 4C			    MOV AH,4CH
+ 0089  CD 21			    INT 21H
+ 008B				main endp
 
 
 				;creat file 
- 0018				newfile proc near
- 0018  B4 3C				mov ah,3ch
- 001A  B9 0000				mov cx,0
- 001D  8D 16 0000 R			lea dx,pathname1
- 0021  CD 21				int 21h
- 0023  73 04				jnc a1
- 0025  A3 001C R			mov handle ,ax
- 0028  C3				ret
- 0029  BA 0010 R		a1: mov dx,offset opnmsg    ;error
- 002C  B4 09				MOV AH,09H
- 002E  CD 21			    INT 21H
- 0030  E8 0001				call errm
- 0033  C3				ret
- 0034				newfile endp
+ 008B				newfile proc near
+ 008B  B4 3C				mov ah,3ch
+ 008D  B9 0000				mov cx,0
+ 0090  CD 21				int 21h
+ 0092  72 04				jc a1
+ 0094  A3 0093 R			mov handle ,ax
+ 0097  C3				ret
+ 0098  BA 0010 R		a1: mov dx,offset opnmsg    ;error
+ 009B  B4 09				MOV AH,09H
+ 009D  CD 21			    INT 21H
+ 009F  E8 0061				call errm
+ 00A2  C3				ret
+ 00A3				newfile endp
 
+				;input
+ 00A3				proch proc near
+ 00A3  B4 09				mov ah,09h
+ 00A5  BA 006D R			mov dx,offset str1
+ 00A8  CD 21				int 21h
+					
+ 00AA  BF 0000				mov di,0
+ 00AD				b1:
+					;输入
+ 00AD  B4 01				 mov ah,01
+ 00AF  CD 21				 int 21h
+					;判断回车
+ 00B1  3C 0D				 cmp al,0dh
+ 00B3  74 07				 je b2
+					;存入inpuf
+ 00B5  88 85 0099 R			 mov content[di],al
+ 00B9  47				 inc di
+ 00BA  EB F1				 jmp b1
+ 00BC				b2:
+					;输入完成，写入文件
+ 00BC  B4 40				mov ah,40h
+ 00BE  8B 1E 0095 R			mov bx,handle1
+ 00C2  8B CF				mov cx,di
+ 00C4  8D 16 0099 R			lea dx,content
+ 00C8  CD 21				int 21h
+ 00CA  72 05				jc b3
+ 00CC  3B C7				cmp ax,di
+ 00CE  75 01				jne b3
+ 00D0  C3				ret
+ 00D1				b3:
+ 00D1  BA 0029 R			mov dx,offset wrtmsg    ;error
+ 00D4  B4 09				MOV AH,09H
+ 00D6  CD 21			    INT 21H
+ 00D8  E8 0028				call errm
+					
+ 00DB  C3				ret
+ 00DC				proch endp
+
+ 00DC				copy proc near
+ 00DC  B4 40				mov ah,40h
+ 00DE  8B 1E 0097 R			mov bx,handle2
+ 00E2  B9 000A				mov cx,10
+ 00E5  8D 16 0099 R			lea dx,content
+ 00E9  CD 21				int 21h
+ 00EB  72 06				jc c1
+ 00ED  83 F8 0A				cmp ax,10
+ 00F0  75 01				jne c1
+ 00F2  C3				ret
+ 00F3				c1:
+ 00F3  BA 0044 R			mov dx,offset cpymsg    ;error
+ 00F6  B4 09				MOV AH,09H
+ 00F8  CD 21			    INT 21H
+ 00FA  E8 0006				call errm
+					
+ 00FD  C3				ret
+ 00FE				copy endp
+
+ 00FE				clseh proc near
+ 00FE  B4 3E				mov ah,3eh
+ 0100  CD 21				int 21h
+ 0102  C3				ret
+ 0103				clseh endp
 
 				;error
- 0034				errm proc near
- 0034  C6 06 001B R 01			mov errcde,01
- 0039  C3				ret
- 003A				errm endp
+ 0103				errm proc near
+ 0103  C6 06 0092 R 01			mov errcde,01
+ 0108  C3				ret
+ 0109				errm endp
 				    
- 003A				CODES ENDS
+ 0109				CODES ENDS
 				    END main
 
-
-
-
-Microsoft (R) Macro Assembler Version 6.11		    06/17/20 11:23:32
+Microsoft (R) Macro Assembler Version 6.11		    06/17/20 14:46:51
 tempfile.asm						     Symbols 2 - 1
 
 
@@ -79,8 +215,8 @@ Segments and Groups:
 
                 N a m e                 Size     Length   Align   Combine Class
 
-CODES  . . . . . . . . . . . . .	16 Bit	 003A	  Para	  Private 
-DATAS  . . . . . . . . . . . . .	16 Bit	 001E	  Para	  Private 
+CODES  . . . . . . . . . . . . .	16 Bit	 0109	  Para	  Private 
+DATAS  . . . . . . . . . . . . .	16 Bit	 00FE	  Para	  Private 
 STACKS . . . . . . . . . . . . .	16 Bit	 0000	  Para	  Private 
 
 
@@ -88,23 +224,43 @@ Procedures,  parameters and locals:
 
                 N a m e                 Type     Value    Attr
 
-errm . . . . . . . . . . . . . .	P Near	 0034	  CODES	Length= 0006 Public
-main . . . . . . . . . . . . . .	P Far	 0000	  CODES	Length= 0018 Public
-  contin . . . . . . . . . . . .	L Near	 0014	  CODES	
-  exit . . . . . . . . . . . . .	L Near	 0014	  CODES	
-newfile  . . . . . . . . . . . .	P Near	 0018	  CODES	Length= 001C Public
-  a1 . . . . . . . . . . . . . .	L Near	 0029	  CODES	
+clseh  . . . . . . . . . . . . .	P Near	 00FE	  CODES	Length= 0005 Public
+copy . . . . . . . . . . . . . .	P Near	 00DC	  CODES	Length= 0022 Public
+  c1 . . . . . . . . . . . . . .	L Near	 00F3	  CODES	
+errm . . . . . . . . . . . . . .	P Near	 0103	  CODES	Length= 0006 Public
+main . . . . . . . . . . . . . .	P Far	 0000	  CODES	Length= 008B Public
+  contin1  . . . . . . . . . . .	L Near	 0018	  CODES	
+  contin2  . . . . . . . . . . .	L Near	 0036	  CODES	
+  contin3  . . . . . . . . . . .	L Near	 004D	  CODES	
+  contin4  . . . . . . . . . . .	L Near	 006B	  CODES	
+  exit . . . . . . . . . . . . .	L Near	 0087	  CODES	
+newfile  . . . . . . . . . . . .	P Near	 008B	  CODES	Length= 0018 Public
+  a1 . . . . . . . . . . . . . .	L Near	 0098	  CODES	
+proch  . . . . . . . . . . . . .	P Near	 00A3	  CODES	Length= 0039 Public
+  b1 . . . . . . . . . . . . . .	L Near	 00AD	  CODES	
+  b2 . . . . . . . . . . . . . .	L Near	 00BC	  CODES	
+  b3 . . . . . . . . . . . . . .	L Near	 00D1	  CODES	
 
 
 Symbols:
 
                 N a m e                 Type     Value    Attr
 
-errcde . . . . . . . . . . . . .	Byte	 001B	  DATAS	
-handle . . . . . . . . . . . . .	Word	 001C	  DATAS	
+clsok  . . . . . . . . . . . . .	Byte	 005E	  DATAS	
+content  . . . . . . . . . . . .	Byte	 0099	  DATAS	
+cpymsg . . . . . . . . . . . . .	Byte	 0044	  DATAS	
+cpyok  . . . . . . . . . . . . .	Byte	 0050	  DATAS	
+errcde . . . . . . . . . . . . .	Byte	 0092	  DATAS	
+handle1  . . . . . . . . . . . .	Word	 0095	  DATAS	
+handle2  . . . . . . . . . . . .	Word	 0097	  DATAS	
+handle . . . . . . . . . . . . .	Word	 0093	  DATAS	
 opnmsg . . . . . . . . . . . . .	Byte	 0010	  DATAS	
+opnok  . . . . . . . . . . . . .	Byte	 001B	  DATAS	
 pathname1  . . . . . . . . . . .	Byte	 0000	  DATAS	
 pathname2  . . . . . . . . . . .	Byte	 0008	  DATAS	
+str1 . . . . . . . . . . . . . .	Byte	 006D	  DATAS	
+wrtmsg . . . . . . . . . . . . .	Byte	 0029	  DATAS	
+wrtok  . . . . . . . . . . . . .	Byte	 0035	  DATAS	
 
 	   0 Warnings
 	   0 Errors
