@@ -1,11 +1,18 @@
-Microsoft (R) Macro Assembler Version 6.11		    06/17/20 10:58:49
+Microsoft (R) Macro Assembler Version 6.11		    06/17/20 11:23:32
 tempfile.asm						     Page 1 - 1
 
 
  0000				DATAS SEGMENT
 				    ;此处输入数据段代码  
-				    
- 0000				DATAS ENDS
+ 0000 61 62 63 2E 74 78		    pathname1 db 'abc.txt',0
+       74 00
+ 0008 64 65 66 2E 74 78		    pathname2 db 'def.txt',0
+       74 00
+ 0010 6F 70 65 6E 20 65		    opnmsg db 'open error$'
+       72 72 6F 72 24
+ 001B 00			    errcde db 0
+ 001C 0000			    handle dw ?
+ 001E				DATAS ENDS
 
  0000				STACKS SEGMENT
 				    ;此处输入堆栈段代码
@@ -18,21 +25,51 @@ tempfile.asm						     Page 1 - 1
  0000  B8 ---- R		    MOV AX,DATAS
  0003  8E D8			    MOV DS,AX
 				    ;此处输入代码段代码
- 0005  E8 0004			    call newfile
+ 0005  B8 0000			    mov ax,0
+ 0008  E8 000D			    call newfile
 				    
- 0008  B4 4C			    MOV AH,4CH
- 000A  CD 21			    INT 21H
- 000C				main endp
-				    
- 000C				newfile proc near
+ 000B  80 3E 001B R 00		    cmp errcde,0
+ 0010  74 02			    jz contin
+ 0012  EB 00			    jmp exit
+ 0014				contin:
 					
- 000C  C3				ret
- 000D				newfile endp
 				    
- 000D				CODES ENDS
+ 0014				exit:
+ 0014  B4 4C			    MOV AH,4CH
+ 0016  CD 21			    INT 21H
+ 0018				main endp
+
+
+				;creat file 
+ 0018				newfile proc near
+ 0018  B4 3C				mov ah,3ch
+ 001A  B9 0000				mov cx,0
+ 001D  8D 16 0000 R			lea dx,pathname1
+ 0021  CD 21				int 21h
+ 0023  73 04				jnc a1
+ 0025  A3 001C R			mov handle ,ax
+ 0028  C3				ret
+ 0029  BA 0010 R		a1: mov dx,offset opnmsg    ;error
+ 002C  B4 09				MOV AH,09H
+ 002E  CD 21			    INT 21H
+ 0030  E8 0001				call errm
+ 0033  C3				ret
+ 0034				newfile endp
+
+
+				;error
+ 0034				errm proc near
+ 0034  C6 06 001B R 01			mov errcde,01
+ 0039  C3				ret
+ 003A				errm endp
+				    
+ 003A				CODES ENDS
 				    END main
 
-Microsoft (R) Macro Assembler Version 6.11		    06/17/20 10:58:49
+
+
+
+Microsoft (R) Macro Assembler Version 6.11		    06/17/20 11:23:32
 tempfile.asm						     Symbols 2 - 1
 
 
@@ -42,8 +79,8 @@ Segments and Groups:
 
                 N a m e                 Size     Length   Align   Combine Class
 
-CODES  . . . . . . . . . . . . .	16 Bit	 000D	  Para	  Private 
-DATAS  . . . . . . . . . . . . .	16 Bit	 0000	  Para	  Private 
+CODES  . . . . . . . . . . . . .	16 Bit	 003A	  Para	  Private 
+DATAS  . . . . . . . . . . . . .	16 Bit	 001E	  Para	  Private 
 STACKS . . . . . . . . . . . . .	16 Bit	 0000	  Para	  Private 
 
 
@@ -51,8 +88,23 @@ Procedures,  parameters and locals:
 
                 N a m e                 Type     Value    Attr
 
-main . . . . . . . . . . . . . .	P Far	 0000	  CODES	Length= 000C Public
-newfile  . . . . . . . . . . . .	P Near	 000C	  CODES	Length= 0001 Public
+errm . . . . . . . . . . . . . .	P Near	 0034	  CODES	Length= 0006 Public
+main . . . . . . . . . . . . . .	P Far	 0000	  CODES	Length= 0018 Public
+  contin . . . . . . . . . . . .	L Near	 0014	  CODES	
+  exit . . . . . . . . . . . . .	L Near	 0014	  CODES	
+newfile  . . . . . . . . . . . .	P Near	 0018	  CODES	Length= 001C Public
+  a1 . . . . . . . . . . . . . .	L Near	 0029	  CODES	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+errcde . . . . . . . . . . . . .	Byte	 001B	  DATAS	
+handle . . . . . . . . . . . . .	Word	 001C	  DATAS	
+opnmsg . . . . . . . . . . . . .	Byte	 0010	  DATAS	
+pathname1  . . . . . . . . . . .	Byte	 0000	  DATAS	
+pathname2  . . . . . . . . . . .	Byte	 0008	  DATAS	
 
 	   0 Warnings
 	   0 Errors
